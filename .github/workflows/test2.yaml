@@ -37,6 +37,7 @@ jobs:
       contents: read
       id-token: write
     runs-on: ubuntu-latest
+    environment: joseselacome
     needs: buildImage
     steps:
       - uses: actions/checkout@v2
