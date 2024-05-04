@@ -2,12 +2,14 @@ name: testing workflow
 
 on: [push, pull_request]
 
+
 env:
   ULTIMATE: ${{ vars.MY_VAR }}
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    environment: joseselacome
     steps:
     - name: Step 1
       run: echo "Hello, from Step 1! ${{ env.ULTIMATE }}"
