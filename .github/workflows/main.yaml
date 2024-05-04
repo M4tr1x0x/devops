@@ -1,24 +1,81 @@
-# .github/workflows/main.yml
-
-name: Build and deploy Python app to AKS with Helm
+name: Build and deploy an app to AKS with Helm
 
 on:
   push:
     branches: ["main"]
   workflow_dispatch:
 
+env:
+  AZURE_CONTAINER_REGISTRY: ${{ vars.AZURE_CONTAINER_REGISTRY }}
+  ACR_RESOURCE_GROUP: ${{ vars.ACR_RESOURCE_GROUP }}
+  AKS_RESOURCE_GROUP: ${{ vars.AKS_RESOURCE_GROUP }}
+  CLUSTER_NAME: ${{ vars.CLUSTER_NAME }}
+  CHART_PATH: ${{ vars.CHART_PATH }}
+  CHART_OVERRIDE_PATH: ${{ vars.CHART_OVERRIDE_PATH }}
+
 jobs:
-  build:
+  buildImage:
+    permissions:
+      contents: read
+      id-token: write
     runs-on: ubuntu-latest
-
+    environment: joseselacome
+    strategy:
+      matrix:
+        service: [auth, accounts, transactions]
     steps:
-    - uses: actions/checkout@v2
+      - uses: actions/checkout@v2
+      - name: Azure login
+        uses: azure/login@v1.4.6
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+      - name: List directory contents for debugging
+        run: |
+          echo "Listing contents of ${{ matrix.service }} directory:"
+          ls -lR ./${{ matrix.service }}/
+      - name: Build and push image to ACR
+        run: |
+          az acr build --registry ${{ env.AZURE_CONTAINER_REGISTRY }} --image ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ matrix.service }}:${{ github.sha }} --file ./${{ matrix.service }}/Dockerfile ./${{ matrix.service }}
 
-    - name: Set up Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: '3.8'
-
-    - name: Build and run Python script
-      run: |
-        python app.py
+  deploy:
+    permissions:
+      actions: read
+      contents: read
+      id-token: write
+    runs-on: ubuntu-latest
+    environment: joseselacome
+    needs: buildImage
+    steps:
+      - uses: actions/checkout@v2
+      - name: Azure login
+        uses: azure/login@v1.4.6
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+      - name: Set up kubelogin for non-interactive login
+        uses: azure/use-kubelogin@v1
+        with:
+          kubelogin-version: 'v0.0.25'
+      - name: Get K8s context
+        uses: azure/aks-set-context@v3
+        with:
+          resource-group: ${{ env.AKS_RESOURCE_GROUP }}
+          cluster-name: ${{ env.CLUSTER_NAME }}
+          admin: 'false'
+          use-kubelogin: 'true'
+      - name: Bake deployment
+        uses: azure/k8s-bake@v2
+        with:
+          renderEngine: "helm"
+          helmChart: ${{ env.CHART_PATH }}
+          overrideFiles: ${{ env.CHART_OVERRIDE_PATH }}
+          helm-version: "latest"
+        id: bake
+      - name: Deploy application
+        uses: Azure/k8s-deploy@v4
+        with:
+          action: deploy
+          manifests: ${{ steps.bake.outputs.manifestsBundle }}
+          images: |
+            ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/auth:${{ github.sha }}
+            ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/accounts:${{ github.sha }}
+            ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/transactions:${{ github.sha }}
