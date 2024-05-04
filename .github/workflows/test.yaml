@@ -8,7 +8,7 @@ jobs:
     environment: helloitsme
     steps:
     - name: Step 1
-      run: echo "Hello, from Step 1! ${{ secrets.ULTIMATE }}"
+      run: echo "Hello, from Step 1! ${{ env.MY_VAR }}"
 
 
 
