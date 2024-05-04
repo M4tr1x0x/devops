@@ -7,7 +7,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Step 1
-      run: echo "Hello, from Step 1! ${{ helloitsme.MY_VAR }}"
+      run: echo "Hello, from Step 1! ${{ vars.MY_VAR }}"
 
 
 
