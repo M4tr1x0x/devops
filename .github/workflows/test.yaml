@@ -5,8 +5,7 @@ on: [push, pull_request]
 jobs:
   build:
     runs-on: ubuntu-latest
-    env:
-      MY_VAR: "This is my var"
+    environment: helloitsme
     steps:
     - name: Step 1
       run: echo "Hello, from Step 1! $MY_VAR"
