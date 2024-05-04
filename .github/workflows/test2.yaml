@@ -29,6 +29,10 @@ jobs:
         uses: azure/login@v1.4.6
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
+      - name: List directory contents for debugging
+        run: |
+          echo "Listing contents of ${{ matrix.service }} directory:"
+          ls -lR ./${{ matrix.service }}/
       - name: Build and push image to ACR
         run: |
           az acr build --registry ${{ env.AZURE_CONTAINER_REGISTRY }} --image ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ matrix.service }}:${{ github.sha }} --file ./${{ matrix.service }}/Dockerfile ./${{ matrix.service }}
