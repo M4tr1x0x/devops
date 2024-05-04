@@ -5,10 +5,9 @@ on: [push, pull_request]
 jobs:
   build:
     runs-on: ubuntu-latest
-    environment: helloitsme
     steps:
     - name: Step 1
-      run: echo "Hello, from Step 1! ${{ env.MY_VAR }}"
+      run: echo "Hello, from Step 1! ${{ helloitsme.MY_VAR }}"
 
 
 
