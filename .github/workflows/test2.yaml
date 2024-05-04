@@ -6,13 +6,12 @@ on:
   workflow_dispatch:
 
 env:
-  AZURE_CONTAINER_REGISTRY: ${{vars.AZURE_CONTAINER_REGISTRY}}
-  CONTAINER_NAME: ${{vars.CONTAINER_NAME}}
-  ACR_RESOURCE_GROUP: ${{vars.ACR_RESOURCE_GROUP}}
-  AKS_RESOURCE_GROUP: ${{vars.AKS_RESOURCE_GROUP}}
-  CLUSTER_NAME: ${{vars.CLUSTER_NAME}}
-  CHART_PATH: ${{vars.CHART_PATH}}
-  CHART_OVERRIDE_PATH: ${{vars.CHART_OVERRIDE_PATH}}
+  AZURE_CONTAINER_REGISTRY: ${{ vars.AZURE_CONTAINER_REGISTRY }}
+  ACR_RESOURCE_GROUP: ${{ vars.ACR_RESOURCE_GROUP }}
+  AKS_RESOURCE_GROUP: ${{ vars.AKS_RESOURCE_GROUP }}
+  CLUSTER_NAME: ${{ vars.CLUSTER_NAME }}
+  CHART_PATH: ${{ vars.CHART_PATH }}
+  CHART_OVERRIDE_PATH: ${{ vars.CHART_OVERRIDE_PATH }}
 
 jobs:
   buildImage:
@@ -21,6 +20,9 @@ jobs:
       id-token: write
     runs-on: ubuntu-latest
     environment: joseselacome
+    strategy:
+      matrix:
+        service: [auth, accounts, transactions]
     steps:
       - uses: actions/checkout@v2
       - name: Azure login
@@ -29,7 +31,7 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
       - name: Build and push image to ACR
         run: |
-          az acr build --image ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.CONTAINER_NAME }}:${{ github.sha }} --registry ${{ env.AZURE_CONTAINER_REGISTRY }} -g ${{ env.ACR_RESOURCE_GROUP }} .
+          az acr build --image ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ matrix.service }}:${{ github.sha }} --file ./${{ matrix.service }}/Dockerfile --registry ${{ env.AZURE_CONTAINER_REGISTRY }} -g ${{ env.ACR_RESOURCE_GROUP }} --context ./${{ matrix.service }}/
 
   deploy:
     permissions:
@@ -70,4 +72,6 @@ jobs:
           action: deploy
           manifests: ${{ steps.bake.outputs.manifestsBundle }}
           images: |
-            ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.CONTAINER_NAME }}:${{ github.sha }}
+            ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/auth:${{ github.sha }}
+            ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/accounts:${{ github.sha }}
+            ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/transactions:${{ github.sha }}
